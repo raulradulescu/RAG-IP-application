@@ -4,7 +4,7 @@ import './App.css'; // Import the CSS file
 import { v4 as uuidv4 } from 'uuid';
 
 function App() {
-  const [userId] = "abc123"/*useState(uuidv4())*/; // Hardcoded user ID for now
+  const [userId] = useState(uuidv4()); // Hardcoded user ID for now
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState('');
   const [patientScore, setPatientScore] = useState(null); // State for patient score

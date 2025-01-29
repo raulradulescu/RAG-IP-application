@@ -7,6 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from PyPDF2 import PdfReader
 from docx import Document
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app, resources={r"/ask": {"origins": "http://localhost:3000"}})
@@ -43,22 +44,45 @@ def extract_text_from_docx(docx_path):
 
 def initialize_knowledge_base():
     global knowledge_base, kb_embeddings
-    document_paths = [
-        r'C:\UVT\AN 2 SEM 1\Individual project\Allergy, Asthma, and Immune Deficiency.pdf',
-        r'C:\UVT\AN 2 SEM 1\Individual project\Tratament_RA.docx',
-        r'C:\UVT\AN 2 SEM 1\Individual project\2. Diagnosticul RA.docx',
-        r'C:\UVT\AN 2 SEM 1\Individual project\3. Dg dif_RA.docx'
-    ]
+    document_paths = {
+        'csv': [
+            'clase_de_med_RA.csv',
+            'teste_comorb_rin_alg.csv',
+            'teste_comorb_rin_alt_no_diacritics.csv',
+            'teste_diag_dif_rinita_alg.csv',
+            'teste_diag_dif_rinita_alg_no_diacritics.csv',
+            'tratam_RA_persistenta.csv',
+            'tratam_RA_interm.csv',
+            'tratam_conj.csv'
+        ],
+        'json': [
+            'diagnosticul_RA.json'
+        ],
+    }
 
-        # Extract and clean text
-    for path in document_paths:
-        if path.endswith('.pdf'):
-            text = clean_text(extract_text_from_pdf(path))
-        elif path.endswith('.docx'):
-            text = clean_text(extract_text_from_docx(path))
-        knowledge_base.append({"topic": "general", "content": text})
+        # Read CSV files
+    for csv_file in document_paths['csv']:
+        try:
+            import pandas as pd
+            df = pd.read_csv(csv_file)
+            text = df.to_string()
+            knowledge_base.append({"topic": "medical_data", "content": clean_text(text)})
+        except Exception as e:
+            print(f"Error reading CSV file {csv_file}: {e}")
+
+    # Read JSON files
+    for json_file in document_paths['json']:
+        try:
+            import json
+            with open(json_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                text = json.dumps(data, ensure_ascii=False, indent=2)
+                knowledge_base.append({"topic": "medical_data", "content": clean_text(text)})
+        except Exception as e:
+            print(f"Error reading JSON file {json_file}: {e}")
 
     kb_embeddings = model.encode([entry["content"] for entry in knowledge_base], convert_to_numpy=True)
+
 initialize_knowledge_base()
 
 def retrieve_documents(query, topic=None):
@@ -116,7 +140,7 @@ def generate_response(conversation_history, contexts, language="en"):
     """
     try:
         response = client.chat.completions.create(
-            model="hf:meta-llama/Llama-3.2-3B-Instruct",
+            model="hf:meta-llama/Meta-Llama-3.1-405B-Instruct",
             messages=[{"role": "system", "content": prompt}],
             stream=False,
         )
